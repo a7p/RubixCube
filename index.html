@@ -89,44 +89,6 @@
   label.chk { color: var(--muted); font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
   .mininet { display: flex; justify-content: center; margin-top: 12px; }
 
-  /* ---------- Mobilgeräte ---------- */
-  @media (max-width: 800px) {
-    body { padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); }
-    h1 { font-size: 1.35rem; }
-    .card { padding: 12px; border-radius: 12px; }
-    .scene { height: 270px; touch-action: pan-y; }
-    .move-big { font-size: 3.2rem; }
-    .move-text { min-height: 0; }
-    .ctrl { position: sticky; bottom: 0; background: var(--card); padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); margin: 8px 0 0; z-index: 5;
-      border-top: 1px solid var(--line); }
-    .ctrl button { min-height: 50px; min-width: 56px; }
-    .chip { padding: 8px 12px; }
-    .chips { max-height: 160px; }
-    button { min-height: 44px; }
-    #follow { width: 22px; height: 22px; }
-    label.chk { font-size: 1rem; }
-    .speed input { width: 45%; height: 32px; }
-  }
-  @media (max-width: 800px) {
-    /* Netz in zwei Spalten, damit die Felder groß genug zum Tippen bleiben */
-    #inputNet.net { grid-template-columns: repeat(2, auto); grid-template-rows: none; gap: 10px; margin: 0 auto;
-      --sz: min(46px, calc((100vw - 110px) / 6.4)); }
-    #inputNet .face { grid-column: auto !important; grid-row: auto !important; }
-    #inputNet .pos-U { order: 1; } #inputNet .pos-F { order: 2; } #inputNet .pos-R { order: 3; }
-    #inputNet .pos-B { order: 4; } #inputNet .pos-D { order: 5; } #inputNet .pos-L { order: 6; }
-    #inputNet .lbl { display: block; }
-    #inputNet .st { width: var(--sz); height: var(--sz); }
-    #inputView { padding-bottom: 96px; }
-    .palette { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; z-index: 20; justify-content: center; gap: 6px;
-      padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
-    .sw { width: 50px; height: 50px; }
-    .row > button { flex: 1 1 auto; min-height: 48px; }
-    .mininet { display: none; }
-    .ctrl { flex-wrap: nowrap; gap: 6px; }
-    .ctrl button { white-space: nowrap; font-size: 1rem; }
-    .ctrl button { flex: 1 1 0; min-width: 0 !important; padding: 8px 4px; }
-    .ctrl #bPlay, .ctrl #bNext { flex: 2 1 0; }
-  }
   fieldset.modes { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 14px 0 0; }
   fieldset.modes legend { color: var(--muted); font-size: .9rem; padding: 0 6px; }
   fieldset.modes label { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
@@ -146,12 +108,77 @@
   .chip.sa { border-bottom: 3px solid #4f8cff; } .chip.sb { border-bottom: 3px solid #34c759; }
   .chip.cur.sa, .chip.cur.sb { border-bottom-color: #fff; }
   .chip.inmacro { box-shadow: 0 0 0 2px #fff6; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  header.top h1 { margin: 4px 0 2px; }
+  .hbtn { width: 36px; height: 36px; border-radius: 50%; padding: 0; font-weight: 700; flex: none; }
+  .info { color: var(--muted); font-size: .9rem; }
+  #btnFlip { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 4px 10px; font-size: .85rem; }
+  .overlay { position: fixed; inset: 0; background: #000b; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: var(--card); border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height: 85vh; max-height: 85dvh; overflow: auto; width: 100%; max-width: 560px; position: relative; font-size: .95rem; }
+  .sheet h3 { margin: 12px 0 4px; font-size: 1rem; } .sheet h3:first-child { margin-top: 0; }
+  .sheet p { margin: 4px 0; }
+  .sheet .x { position: absolute; top: 8px; right: 10px; width: 36px; height: 36px; padding: 0; border-radius: 50%; }
+  #inputNet { touch-action: none; }
+
+  /* ---------- Mobilgeräte: alles auf einen Bildschirm, ohne Scrollen (z. B. iPhone 13) ---------- */
+  @media (max-width: 800px) {
+    html, body { height: 100%; overflow: hidden; }
+    body { height: 100vh; height: 100dvh; }
+    body { padding: 4px 10px calc(6px + env(safe-area-inset-bottom)); }
+    .wrap { height: 100%; display: flex; flex-direction: column; overflow: auto; }
+    header.top h1 { font-size: 1.05rem; margin: 2px 0; }
+    p.sub, footer, .hint, .card.hint, .drag-hint, .mininet, .speed, .legend, h2, .next, details.sinfo, .chips, label.chk { display: none !important; }
+    button { min-height: 44px; touch-action: manipulation; }
+    .hbtn { min-height: 36px; }
+    .card { padding: 8px; border-radius: 12px; margin-bottom: 0; }
+
+    /* Eingabe */
+    #inputView { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #inputView > .card { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+    .input-grid { display: flex; flex-direction: column; gap: 10px; }
+    #inputNet.net { --sz: calc((100vw - 76px) / 12); gap: 4px; margin: 0 auto; }
+    .face { padding: 2px; gap: 1px; border-radius: 6px; }
+    .st { border-radius: 4px; min-height: 0; }
+    .palette { position: static; margin: 0; padding: 0; background: none; border: 0; justify-content: center; gap: 6px; }
+    .sw { width: 46px; height: 46px; border-radius: 10px; }
+    fieldset.modes { display: flex; gap: 8px; border: 0; padding: 0; margin: 0; }
+    fieldset.modes legend, fieldset.modes small { display: none; }
+    fieldset.modes label { flex: 1; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 10px; justify-content: center; text-align: center; }
+    fieldset.modes label:has(input:checked) { border-color: var(--accent); background: #4f8cff22; }
+    fieldset.modes input { position: absolute; opacity: 0; pointer-events: none; }
+    .input-grid .row { margin-top: 0 !important; gap: 8px; }
+    #btnSolve { flex: 1 1 100%; min-height: 50px; }
+    #btnScramble, #btnReset { flex: 1 1 0; }
+    .msg { font-size: .85rem; padding: 6px 10px; margin-top: 6px; }
+
+    /* Lösung */
+    #solveView { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+    #solveView > .row { flex: none; margin: 0 !important; flex-wrap: nowrap; }
+    #solveView > .row button { min-height: 38px; padding: 4px 12px; }
+    .solve-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+    .solve-grid > .card:first-child { flex: 1 1 0; min-height: 120px; display: flex; flex-direction: column; padding: 4px; }
+    .scene { flex: 1; height: auto; min-height: 0; touch-action: pan-y; }
+    .instr { flex: none; padding: 6px 10px 8px; }
+    .stages { margin: 0 0 3px; gap: 5px; }
+    .stg { width: 30px; height: 30px; min-height: 0; font-size: .85rem; }
+    .stagename { font-size: .9rem; }
+    .stepno { font-size: .78rem; }
+    .bar { height: 4px; margin: 3px 0 4px; }
+    .move-big { font-size: 2.4rem; line-height: 1.05; }
+    .move-text { font-size: .92rem; min-height: 0; line-height: 1.3; }
+    .note { font-size: .8rem; padding: 4px 8px; margin: 5px 0 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .ctrl { position: static; margin: 6px 0 0; padding: 0; border: 0; flex-wrap: nowrap; gap: 6px; }
+    .ctrl button { flex: 1 1 0; min-width: 0 !important; padding: 6px 4px; min-height: 48px; white-space: nowrap; font-size: 1rem; }
+    .ctrl #bPlay, .ctrl #bNext { flex: 2 1 0; }
+  }
   footer { color: var(--muted); font-size: .85rem; text-align: center; margin: 24px 0 8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🧩 Zauberwürfel-Löser</h1>
+  <header class="top"><h1>🧩 Zauberwürfel-Löser</h1><button class="hbtn" id="btnHelp" aria-label="Hilfe">?</button></header>
   <p class="sub">Gib die Farben deines 3×3-Würfels ein – das Programm führt dich Zug für Zug zur Lösung. Alles läuft lokal in deinem Browser.</p>
 
   <!-- ===================== EINGABE ===================== -->
@@ -174,9 +201,9 @@
           <fieldset class="modes">
             <legend>2. Lösungsweg</legend>
             <label><input type="radio" name="mode" value="learn" checked>
-              <span><b>Lernmodus</b> – Anfängermethode in 7 Stufen mit Erklärungen (ca. 100–190 Züge)</span></label>
+              <span><b>Lernmodus</b><small> – Anfängermethode in 7 Stufen mit Erklärungen (ca. 100–190 Züge)</small></span></label>
             <label><input type="radio" name="mode" value="short">
-              <span><b>Kurze Lösung</b> – nur Züge, dafür meist unter 25</span></label>
+              <span><b>Kurze Lösung</b><small> – nur Züge, dafür meist unter 25</small></span></label>
           </fieldset>
           <div class="row" style="margin-top:12px">
             <button class="primary" id="btnSolve">Lösung berechnen</button>
@@ -193,14 +220,13 @@
   <section id="solveView" class="hidden">
     <div class="row" style="margin-bottom:12px">
       <button id="btnBack">← Eingabe ändern</button>
-      <span class="hint" id="solInfo"></span>
+      <span class="info" id="solInfo"></span>
     </div>
     <div class="solve-grid">
       <div class="card">
-        <div class="scene" id="scene"><div id="cube"></div><div class="drag-hint">Ziehen zum Drehen</div></div>
+        <div class="scene" id="scene"><div id="cube"></div><div class="drag-hint">Ziehen zum Drehen</div><button id="btnFlip" title="Ansicht um 180° drehen">↻ Rückseite</button></div>
         <div class="row" style="justify-content:space-between; margin-top:8px">
           <label class="chk"><input type="checkbox" id="follow" checked> Ansicht automatisch zur gedrehten Seite wenden</label>
-          <button id="btnFlip" title="Ansicht um 180° drehen">↻ Rückseite</button>
         </div>
         <div class="mininet"><div class="net" id="miniNet" style="--sz:20px"></div></div>
       </div>
@@ -238,6 +264,19 @@
     </div>
   </section>
 
+  <div class="overlay hidden" id="help">
+    <div class="sheet">
+      <button class="x" id="helpClose" aria-label="Schließen">✕</button>
+      <div id="helpDyn"></div>
+      <h3>Eingabe</h3>
+      <p>Farbe unten wählen, dann Felder antippen oder mit dem Finger darüberwischen. Die Mittelfelder sind fest.</p>
+      <p><b>Ausrichtung:</b> Weiß oben, Grün vorne. Das Netz zeigt die Seiten wie einen aufgeklappten Karton: oben Weiß, in der Mitte Links, Vorne, Rechts, Hinten, unten Gelb – jeweils mit Blick direkt auf die Seite.</p>
+      <h3>Notation</h3>
+      <p><b>U</b> oben, <b>D</b> unten, <b>F</b> vorne, <b>B</b> hinten, <b>L</b> links, <b>R</b> rechts. Ohne Zeichen = Vierteldrehung im Uhrzeigersinn (Blick auf diese Seite), <b>'</b> = gegen den Uhrzeigersinn, <b>2</b> = halbe Drehung.</p>
+      <h3>Bedienung</h3>
+      <p>Würfel mit dem Finger ziehen = drehen. Die Kreise oben (Lernmodus) springen zur jeweiligen Stufe.</p>
+    </div>
+  </div>
   <footer>Löser: Zwei-Phasen-Algorithmus (Kociemba-Prinzip), vollständig clientseitig – keine Daten verlassen deinen Browser.</footer>
 </div>
 
@@ -348,9 +387,8 @@
   });
 
   // ---------------------------------------------------------------- 3D-Würfel
-  var SZ = 56;
+  var SZ = 56, FACE_T = {};
   var cubeEl = $('cube'), sceneEl = $('scene');
-  cubeEl.style.setProperty('--s', SZ + 'px');
   var view = { rx: -28, ry: -36 };
   var FACE_VIEW = { U: [-38, -30], F: [-18, -28], R: [-18, -62], L: [-18, 40], B: [-18, 150], D: [34, -30] };
 
@@ -366,11 +404,22 @@
       case 'B': return 45 + (1 - y) * 3 + (1 - x);
     }
   }
-  var FACE_T = {
-    F: 'translateZ(' + SZ / 2 + 'px)', B: 'rotateY(180deg) translateZ(' + SZ / 2 + 'px)',
-    R: 'rotateY(90deg) translateZ(' + SZ / 2 + 'px)', L: 'rotateY(-90deg) translateZ(' + SZ / 2 + 'px)',
-    U: 'rotateX(90deg) translateZ(' + SZ / 2 + 'px)', D: 'rotateX(-90deg) translateZ(' + SZ / 2 + 'px)'
-  };
+  function setCubeSize() {
+    var w = sceneEl.clientWidth, h = sceneEl.clientHeight;
+    SZ = (w && h) ? Math.max(30, Math.min(60, Math.min(w, h) / 4.9)) : 56;
+    var hh = SZ / 2 + 'px';
+    FACE_T = {
+      F: 'translateZ(' + hh + ')', B: 'rotateY(180deg) translateZ(' + hh + ')',
+      R: 'rotateY(90deg) translateZ(' + hh + ')', L: 'rotateY(-90deg) translateZ(' + hh + ')',
+      U: 'rotateX(90deg) translateZ(' + hh + ')', D: 'rotateX(-90deg) translateZ(' + hh + ')'
+    };
+    cubeEl.style.setProperty('--s', SZ + 'px');
+  }
+  setCubeSize();
+  window.addEventListener('resize', function () {
+    if (!sol || $('solveView').classList.contains('hidden') || busy) return;
+    setCubeSize(); render3D(sol.states[idx]);
+  });
   function inLayer(f, x, y, z) {
     return (f === 'U' && y === 1) || (f === 'D' && y === -1) || (f === 'R' && x === 1) ||
            (f === 'L' && x === -1) || (f === 'F' && z === 1) || (f === 'B' && z === -1);
@@ -471,7 +520,7 @@
     idx = 0; busy = false; stopPlay();
     $('inputView').classList.add('hidden');
     $('solveView').classList.remove('hidden');
-    $('solInfo').textContent = res.moves.length + ' Züge bis zur Lösung' + (sol.stages ? ' · Lernmodus, ' + sol.stages.length + ' Stufen' : '');
+    $('solInfo').textContent = res.moves.length + ' Züge' + (sol.stages ? ' · Lernmodus' : ' · Kurze Lösung');
     $('stageBox').classList.toggle('hidden', !sol.stages);
     $('legend').classList.toggle('hidden', !!sol.stages);
     // Chips
@@ -490,6 +539,7 @@
       chips.appendChild(c);
     });
     view.rx = -28; view.ry = -36; applyView();
+    setCubeSize();
     gotoStep(0);
   }
 
@@ -631,6 +681,35 @@
     else if (e.key === 'ArrowLeft') { stopPlay(); stepBack(); }
     else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('bPlay').click(); }
   });
+
+  // Wischen zum Färben
+  (function () {
+    var net = $('inputNet'), down = false;
+    function paintAt(x, y) {
+      var el = document.elementFromPoint(x, y);
+      if (!el || !el.classList.contains('st') || el.classList.contains('center') || el.classList.contains('ro') || !net.contains(el)) return;
+      var i = +el.dataset.idx;
+      if (input[i] === brush) return;
+      input[i] = brush; el.style.background = COLOR[brush]; renderPalette(); $('inputMsg').innerHTML = '';
+    }
+    net.addEventListener('pointerdown', function (e) { down = true; paintAt(e.clientX, e.clientY); });
+    net.addEventListener('pointermove', function (e) { if (down) paintAt(e.clientX, e.clientY); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { net.addEventListener(t, function () { down = false; }); });
+  })();
+
+  // Hilfe
+  $('btnHelp').addEventListener('click', function () {
+    var h = '';
+    if (sol && sol.stages && !$('solveView').classList.contains('hidden') && idx < sol.moves.length) {
+      var m = sol.meta[idx], st = sol.stages[m.stage];
+      h = '<h3>Stufe ' + (m.stage + 1) + ': ' + st.title + '</h3><p>' + st.intro + '</p><h3>Aktueller Hinweis</h3><p>' + m.note + '</p>';
+    }
+    $('helpDyn').innerHTML = h;
+    $('help').classList.remove('hidden');
+  });
+  function closeHelp() { $('help').classList.add('hidden'); }
+  $('helpClose').addEventListener('click', closeHelp);
+  $('help').addEventListener('click', function (e) { if (e.target === $('help')) closeHelp(); });
 
   renderInput();
   applyView();

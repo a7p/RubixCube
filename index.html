@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zauberwürfel-Löser</title>
+<style>
+  :root {
+    --bg: #14161a; --card: #1e2229; --card2: #262b34; --text: #e8eaed; --muted: #9aa3af;
+    --accent: #4f8cff; --ok: #34c759; --bad: #ff5a5f; --line: #333a46;
+    --c-U: #f5f5f5; --c-R: #d62828; --c-F: #2eaf4f; --c-D: #ffd60a; --c-L: #ff8c1a; --c-B: #1d5fd1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding: 16px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 4px 0 2px; }
+  h2 { font-size: 1.1rem; margin: 0 0 10px; }
+  p.sub { color: var(--muted); margin: 0 0 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .hidden { display: none !important; }
+  button { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  /* Eingabe */
+  .input-grid { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .input-grid { grid-template-columns: 1fr; } }
+  .net { display: grid; grid-template-columns: repeat(4, auto); grid-template-rows: repeat(3, auto); gap: 6px; width: max-content; max-width: 100%; }
+  .face { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; background: #0c0d10; border-radius: 8px; position: relative; }
+  .face .lbl { position: absolute; top: -1px; left: 4px; font-size: 10px; color: var(--muted); pointer-events: none; display: none; }
+  .st { width: var(--sz, 38px); height: var(--sz, 38px); border-radius: 5px; border: 0; padding: 0; background: #555; cursor: pointer; }
+  .st.center { cursor: default; box-shadow: inset 0 0 0 3px rgba(0,0,0,.35); }
+  .st.ro { cursor: default; }
+  .st:hover:not(.center):not(.ro) { outline: 2px solid #fff; outline-offset: -2px; }
+  .face.pos-U { grid-column: 2; grid-row: 1; } .face.pos-L { grid-column: 1; grid-row: 2; }
+  .face.pos-F { grid-column: 2; grid-row: 2; } .face.pos-R { grid-column: 3; grid-row: 2; }
+  .face.pos-B { grid-column: 4; grid-row: 2; } .face.pos-D { grid-column: 2; grid-row: 3; }
+  @media (max-width: 460px) { .st { --sz: 26px; } }
+  .palette { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+  .sw { width: 54px; height: 54px; border-radius: 12px; border: 3px solid transparent; cursor: pointer; position: relative; padding: 0; }
+  .sw.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .sw span { position: absolute; bottom: -2px; right: 2px; font-size: 11px; font-weight: 700; padding: 0 5px; border-radius: 8px; background: #000a; color: #fff; }
+  .sw span.bad { background: var(--bad); }
+  .hint { color: var(--muted); font-size: .92rem; }
+  .msg { padding: 10px 12px; border-radius: 10px; margin-top: 12px; }
+  .msg.err { background: #ff5a5f22; border: 1px solid var(--bad); }
+  .msg.info { background: #4f8cff22; border: 1px solid var(--accent); }
+  .msg.ok { background: #34c75922; border: 1px solid var(--ok); }
+
+  /* Lösung */
+  .solve-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 800px) { .solve-grid { grid-template-columns: 1fr; } }
+  .scene { height: 340px; perspective: 1000px; position: relative; overflow: hidden; border-radius: 12px;
+    background: radial-gradient(circle at 50% 40%, #2b313c, #181b21); cursor: grab; touch-action: none; user-select: none; }
+  .scene:active { cursor: grabbing; }
+  #cube { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d;
+    transition: transform .6s ease; }
+  #cube.drag { transition: none; }
+  .layer, .cubie { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+  .layer { transition: transform var(--dur, .5s) ease-in-out; }
+  .fc { position: absolute; left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s);
+    background: #0b0b0d; backface-visibility: hidden; border-radius: 6px; }
+  .fc.col { box-shadow: inset 0 0 0 3px #0b0b0d; border-radius: 9px; }
+  .drag-hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  .instr { text-align: center; }
+  .move-big { font-size: 4rem; font-weight: 800; line-height: 1.1; letter-spacing: 1px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .move-text { font-size: 1.1rem; min-height: 3.2em; }
+  .stepno { color: var(--muted); font-size: .9rem; }
+  .bar { height: 8px; background: var(--card2); border-radius: 6px; overflow: hidden; margin: 8px 0 12px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .ctrl { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+  .ctrl button { min-width: 52px; font-size: 1.1rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow: auto; padding: 2px; }
+  .chip { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; padding: 3px 9px; border-radius: 8px;
+    background: var(--card2); border: 1px solid var(--line); cursor: pointer; font-size: .95rem; }
+  .chip.done { opacity: .45; }
+  .chip.cur { background: var(--accent); border-color: var(--accent); color: #fff; opacity: 1; }
+  .chip.p2 { border-style: dashed; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .88rem; color: var(--muted); margin-top: 10px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .speed { display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--muted); font-size: .9rem; }
+  .next { color: var(--muted); font-size: .95rem; }
+  label.chk { color: var(--muted); font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; }
+  .mininet { display: flex; justify-content: center; margin-top: 12px; }
+  footer { color: var(--muted); font-size: .85rem; text-align: center; margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧩 Zauberwürfel-Löser</h1>
+  <p class="sub">Gib die Farben deines 3×3-Würfels ein – das Programm führt dich Zug für Zug zur Lösung. Alles läuft lokal in deinem Browser.</p>
+
+  <!-- ===================== EINGABE ===================== -->
+  <section id="inputView">
+    <div class="card">
+      <div class="input-grid">
+        <div>
+          <h2>1. Farben eingeben</h2>
+          <div class="net" id="inputNet"></div>
+        </div>
+        <div>
+          <h2>Farbe wählen</h2>
+          <div class="palette" id="palette"></div>
+          <p class="hint">Wähle eine Farbe und klicke dann auf die Felder im Würfelnetz, um sie zu färben.
+            Die Mittelfelder sind fest.</p>
+          <p class="hint"><b>Ausrichtung:</b> Halte den Würfel so, dass die <b>weiße</b> Mitte oben und die <b>grüne</b> Mitte vorne
+            ist. Das Netz zeigt die Seiten wie ein aufgeklappter Karton: oben die weiße Seite, in der Mitte links→rechts
+            Links, Vorne, Rechts, Hinten und unten die gelbe Seite – jeweils so, als würdest du direkt auf diese Seite schauen
+            (bei Oben liegt die Hinterkante oben, bei Unten die Vorderkante oben).</p>
+          <div class="row" style="margin-top:12px">
+            <button class="primary" id="btnSolve">Lösung berechnen</button>
+            <button id="btnScramble">Zufällig mischen</button>
+            <button id="btnReset">Gelöst-Zustand</button>
+          </div>
+          <div id="inputMsg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LÖSUNG ===================== -->
+  <section id="solveView" class="hidden">
+    <div class="row" style="margin-bottom:12px">
+      <button id="btnBack">← Eingabe ändern</button>
+      <span class="hint" id="solInfo"></span>
+    </div>
+    <div class="solve-grid">
+      <div class="card">
+        <div class="scene" id="scene"><div id="cube"></div><div class="drag-hint">Ziehen zum Drehen</div></div>
+        <div class="row" style="justify-content:space-between; margin-top:8px">
+          <label class="chk"><input type="checkbox" id="follow" checked> Ansicht automatisch zur gedrehten Seite wenden</label>
+          <button id="btnFlip" title="Ansicht um 180° drehen">↻ Rückseite</button>
+        </div>
+        <div class="mininet"><div class="net" id="miniNet" style="--sz:20px"></div></div>
+      </div>
+      <div class="card instr">
+        <div class="stepno" id="stepNo"></div>
+        <div class="bar"><div id="barFill"></div></div>
+        <div class="move-big" id="moveBig">–</div>
+        <div class="move-text" id="moveText"></div>
+        <div class="next" id="nextMove"></div>
+        <div class="ctrl">
+          <button id="bFirst" title="Zum Anfang">⏮</button>
+          <button id="bPrev" title="Zurück">◀</button>
+          <button id="bPlay" class="primary" title="Automatisch abspielen" style="min-width:110px">▶ Abspielen</button>
+          <button id="bNext" title="Weiter" class="primary">▶ Weiter</button>
+          <button id="bLast" title="Zum Ende">⏭</button>
+        </div>
+        <div class="speed">langsam <input type="range" id="speed" min="0" max="100" value="55"> schnell</div>
+        <h2 style="margin-top:16px; text-align:left">Alle Züge</h2>
+        <div class="chips" id="chips"></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>Phase 1: Würfel „vorbereiten“</span>
+          <span><i style="border:1px dashed var(--muted)"></i>Phase 2 (gestrichelt): fertig lösen</span>
+        </div>
+      </div>
+    </div>
+    <div class="card hint">
+      <b>Notation:</b> Es gelten die internationalen Buchstaben: <b>U</b> (oben), <b>D</b> (unten), <b>F</b> (vorne), <b>B</b> (hinten), <b>L</b> (links), <b>R</b> (rechts).
+      Ohne Zeichen = eine Vierteldrehung im Uhrzeigersinn (mit Blick auf diese Seite), <b>'</b> = gegen den Uhrzeigersinn, <b>2</b> = halbe Drehung (180°).
+    </div>
+  </section>
+
+  <footer>Löser: Zwei-Phasen-Algorithmus (Kociemba-Prinzip), vollständig clientseitig – keine Daten verlassen deinen Browser.</footer>
+</div>
+
+<script src="solver.js"></script>
+<script>
+(function () {
+  'use strict';
+  var S = window.CubeSolver;
+  var FACES = 'URFDLB';
+  var OFFSET = { U: 0, R: 9, F: 18, D: 27, L: 36, B: 45 };
+  var COLOR = { U: '#f5f5f5', R: '#d62828', F: '#2eaf4f', D: '#ffd60a', L: '#ff8c1a', B: '#1d5fd1' };
+  var CNAME = { U: 'Weiß', R: 'Rot', F: 'Grün', D: 'Gelb', L: 'Orange', B: 'Blau' };
+  var FNAME = { U: 'obere Seite', D: 'untere Seite', F: 'vordere Seite', B: 'hintere Seite', L: 'linke Seite', R: 'rechte Seite' };
+  var FLABEL = { U: 'Oben', D: 'Unten', F: 'Vorne', B: 'Hinten', L: 'Links', R: 'Rechts' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------------------------------------------------------------- Netz
+  function buildNet(el, state, opts) {
+    opts = opts || {};
+    el.innerHTML = '';
+    'ULFRBD'.split('').forEach(function (f) {
+      var face = document.createElement('div');
+      face.className = 'face pos-' + f;
+      for (var i = 0; i < 9; i++) {
+        var idx = OFFSET[f] + i, b = document.createElement('button');
+        b.className = 'st' + (i === 4 ? ' center' : '') + (opts.readonly ? ' ro' : '');
+        b.style.background = state[idx] ? COLOR[state[idx]] : '#555';
+        b.dataset.idx = idx;
+        b.tabIndex = opts.readonly ? -1 : 0;
+        b.setAttribute('aria-label', FLABEL[f] + ' Feld ' + (i + 1));
+        if (!opts.readonly && i !== 4) b.addEventListener('click', opts.onClick);
+        face.appendChild(b);
+      }
+      el.appendChild(face);
+    });
+  }
+
+  // ---------------------------------------------------------------- Eingabe
+  var input = S.SOLVED.split('');
+  var brush = 'U';
+
+  function renderPalette() {
+    var pal = $('palette');
+    pal.innerHTML = '';
+    var counts = {};
+    FACES.split('').forEach(function (f) { counts[f] = 0; });
+    input.forEach(function (c) { if (c) counts[c]++; });
+    FACES.split('').forEach(function (f) {
+      var b = document.createElement('button');
+      b.className = 'sw' + (f === brush ? ' sel' : '');
+      b.style.background = COLOR[f];
+      b.title = CNAME[f];
+      b.innerHTML = '<span class="' + (counts[f] !== 9 ? 'bad' : '') + '">' + counts[f] + '/9</span>';
+      b.addEventListener('click', function () { brush = f; renderPalette(); });
+      pal.appendChild(b);
+    });
+  }
+  function renderInput() {
+    buildNet($('inputNet'), input, { onClick: function (e) {
+      input[+e.currentTarget.dataset.idx] = brush;
+      e.currentTarget.style.background = COLOR[brush];
+      renderPalette();
+      $('inputMsg').innerHTML = '';
+    } });
+    renderPalette();
+  }
+  function showMsg(kind, text) { $('inputMsg').innerHTML = '<div class="msg ' + kind + '">' + text + '</div>'; }
+
+  $('btnReset').addEventListener('click', function () { input = S.SOLVED.split(''); renderInput(); $('inputMsg').innerHTML = ''; });
+  $('btnScramble').addEventListener('click', function () {
+    var s = S.SOLVED, last = -1;
+    for (var i = 0; i < 30; i++) {
+      var m;
+      do { m = (Math.random() * 18) | 0; } while (((m / 3) | 0) === last);
+      last = (m / 3) | 0;
+      s = S.applyMove(s, S.moveNames[m]);
+    }
+    input = s.split(''); renderInput(); $('inputMsg').innerHTML = '';
+  });
+
+  var solving = false;
+  $('btnSolve').addEventListener('click', function () {
+    if (solving) return;
+    var str = input.join('');
+    if (str === S.SOLVED) { showMsg('ok', 'Der Würfel ist bereits gelöst. 🎉'); return; }
+    var chk = S.fromFacelets(str);
+    if (!chk.cube) { showMsg('err', '⚠️ ' + chk.error); return; }
+    solving = true;
+    $('btnSolve').disabled = true;
+    showMsg('info', '⏳ Berechne Lösung … (beim ersten Mal baut das Programm Suchtabellen auf, das dauert ein bis zwei Sekunden)');
+    setTimeout(function () {
+      var res;
+      try { res = S.solveCube(chk.cube, { timeLimit: 800 }); }
+      catch (e) { res = { error: e.message }; }
+      solving = false;
+      $('btnSolve').disabled = false;
+      if (res.error) { showMsg('err', '⚠️ ' + res.error); return; }
+      startSolution(str, res);
+    }, 60);
+  });
+
+  // ---------------------------------------------------------------- 3D-Würfel
+  var SZ = 56;
+  var cubeEl = $('cube'), sceneEl = $('scene');
+  cubeEl.style.setProperty('--s', SZ + 'px');
+  var view = { rx: -28, ry: -36 };
+  var FACE_VIEW = { U: [-38, -30], F: [-18, -28], R: [-18, -62], L: [-18, 40], B: [-18, 150], D: [34, -30] };
+
+  function applyView() { cubeEl.style.transform = 'rotateX(' + view.rx + 'deg) rotateY(' + view.ry + 'deg)'; }
+
+  function stickerIndex(face, x, y, z) {
+    switch (face) {
+      case 'U': return 0 + (z + 1) * 3 + (x + 1);
+      case 'R': return 9 + (1 - y) * 3 + (1 - z);
+      case 'F': return 18 + (1 - y) * 3 + (x + 1);
+      case 'D': return 27 + (1 - z) * 3 + (x + 1);
+      case 'L': return 36 + (1 - y) * 3 + (z + 1);
+      case 'B': return 45 + (1 - y) * 3 + (1 - x);
+    }
+  }
+  var FACE_T = {
+    F: 'translateZ(' + SZ / 2 + 'px)', B: 'rotateY(180deg) translateZ(' + SZ / 2 + 'px)',
+    R: 'rotateY(90deg) translateZ(' + SZ / 2 + 'px)', L: 'rotateY(-90deg) translateZ(' + SZ / 2 + 'px)',
+    U: 'rotateX(90deg) translateZ(' + SZ / 2 + 'px)', D: 'rotateX(-90deg) translateZ(' + SZ / 2 + 'px)'
+  };
+  function inLayer(f, x, y, z) {
+    return (f === 'U' && y === 1) || (f === 'D' && y === -1) || (f === 'R' && x === 1) ||
+           (f === 'L' && x === -1) || (f === 'F' && z === 1) || (f === 'B' && z === -1);
+  }
+  function render3D(state, anim) {
+    cubeEl.innerHTML = '';
+    var layer = document.createElement('div');
+    layer.className = 'layer';
+    for (var x = -1; x <= 1; x++) for (var y = -1; y <= 1; y++) for (var z = -1; z <= 1; z++) {
+      var c = document.createElement('div');
+      c.className = 'cubie';
+      c.style.transform = 'translate3d(' + x * SZ + 'px,' + (-y * SZ) + 'px,' + z * SZ + 'px)';
+      var dirs = [['U', y === 1], ['D', y === -1], ['R', x === 1], ['L', x === -1], ['F', z === 1], ['B', z === -1]];
+      for (var k = 0; k < 6; k++) {
+        var d = document.createElement('div');
+        d.className = 'fc';
+        d.style.transform = FACE_T[dirs[k][0]];
+        if (dirs[k][1]) {
+          d.className += ' col';
+          d.style.background = COLOR[state[stickerIndex(dirs[k][0], x, y, z)]];
+        }
+        c.appendChild(d);
+      }
+      (anim && inLayer(anim.face, x, y, z) ? layer : cubeEl).appendChild(c);
+    }
+    cubeEl.appendChild(layer);
+    return layer;
+  }
+
+  // Dreht eine Schicht animiert; Promise wird nach der Animation erfüllt
+  function animateMove(state, name, dur) {
+    return new Promise(function (resolve) {
+      var face = name[0], p = name.length === 1 ? 1 : name[1] === '2' ? 2 : -1;
+      var layer = render3D(state, { face: face });
+      layer.style.setProperty('--dur', dur + 'ms');
+      void layer.offsetWidth;
+      layer.style.transform = rotString(face, p);
+      setTimeout(resolve, dur + 40);
+    });
+  }
+  function rotString(face, p) {
+    var base = { U: ['rotateY', -1], D: ['rotateY', 1], R: ['rotateX', 1], L: ['rotateX', -1], F: ['rotateZ', 1], B: ['rotateZ', -1] }[face];
+    return base[0] + '(' + (base[1] * p * 90) + 'deg)';
+  }
+
+  // Ansicht drehen per Maus / Touch
+  (function () {
+    var drag = null;
+    sceneEl.addEventListener('pointerdown', function (e) {
+      drag = { x: e.clientX, y: e.clientY };
+      cubeEl.classList.add('drag');
+      sceneEl.setPointerCapture(e.pointerId);
+    });
+    sceneEl.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      view.ry += (e.clientX - drag.x) * 0.6;
+      view.rx = Math.max(-89, Math.min(89, view.rx - (e.clientY - drag.y) * 0.6));
+      drag.x = e.clientX; drag.y = e.clientY;
+      applyView();
+    });
+    function end() { drag = null; cubeEl.classList.remove('drag'); }
+    sceneEl.addEventListener('pointerup', end);
+    sceneEl.addEventListener('pointercancel', end);
+  })();
+  $('btnFlip').addEventListener('click', function () { view.ry += 180; applyView(); });
+
+  function focusFace(f) {
+    if (!$('follow').checked) return;
+    var v = FACE_VIEW[f];
+    // kürzesten Weg für ry wählen
+    var target = v[1], cur = view.ry;
+    target += 360 * Math.round((cur - target) / 360);
+    view.rx = v[0]; view.ry = target;
+    applyView();
+  }
+
+  // ---------------------------------------------------------------- Lösungsansicht
+  var sol = null; // { states, moves, phase1 }
+  var idx = 0, busy = false, playing = false, playTimer = null;
+
+  function inverse(m) { return m.length === 1 ? m + "'" : m[1] === '2' ? m : m[0]; }
+
+  function describe(m) {
+    var f = m[0], dir = m.length === 1 ? 'eine Vierteldrehung <b>im Uhrzeigersinn</b>'
+      : m[1] === '2' ? '<b>eine halbe Drehung (180°)</b>'
+      : 'eine Vierteldrehung <b>gegen den Uhrzeigersinn</b>';
+    var col = '<span style="color:' + COLOR[f] + '">●</span> ' + CNAME[f];
+    return 'Drehe die <b>' + FNAME[f] + '</b> (Mitte: ' + col + '): ' + dir + '.' +
+      (m.length === 2 && m[1] === '2' ? '' : '<br><span class="hint">Blick direkt auf diese Seite.</span>');
+  }
+
+  function startSolution(start, res) {
+    var states = [start];
+    res.moves.forEach(function (m) { states.push(S.applyMove(states[states.length - 1], m)); });
+    sol = { states: states, moves: res.moves, phase1: res.phase1 };
+    idx = 0; busy = false; stopPlay();
+    $('inputView').classList.add('hidden');
+    $('solveView').classList.remove('hidden');
+    $('solInfo').textContent = res.moves.length + ' Züge bis zur Lösung';
+    // Chips
+    var chips = $('chips');
+    chips.innerHTML = '';
+    res.moves.forEach(function (m, i) {
+      var c = document.createElement('span');
+      c.className = 'chip' + (i >= res.phase1 ? ' p2' : '');
+      c.textContent = m;
+      c.addEventListener('click', function () { if (!busy) { stopPlay(); gotoStep(i); } });
+      chips.appendChild(c);
+    });
+    view.rx = -28; view.ry = -36; applyView();
+    gotoStep(0);
+  }
+
+  function updateUI() {
+    var n = sol.moves.length;
+    $('barFill').style.width = (idx / n * 100) + '%';
+    var kids = $('chips').children;
+    for (var i = 0; i < kids.length; i++) {
+      kids[i].classList.toggle('done', i < idx);
+      kids[i].classList.toggle('cur', i === idx);
+    }
+    if (idx < n && kids[idx]) kids[idx].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (idx < n) {
+      var m = sol.moves[idx];
+      $('stepNo').textContent = 'Schritt ' + (idx + 1) + ' von ' + n + (idx < sol.phase1 ? ' · Phase 1' : ' · Phase 2');
+      $('moveBig').textContent = m;
+      $('moveBig').style.color = COLOR[m[0]] === '#f5f5f5' ? '#fff' : COLOR[m[0]];
+      $('moveText').innerHTML = describe(m);
+      $('nextMove').textContent = idx + 1 < n ? 'Danach: ' + sol.moves.slice(idx + 1, idx + 4).join('  ') + (idx + 4 < n ? ' …' : '') : 'Das ist der letzte Zug!';
+    } else {
+      $('stepNo').textContent = 'Fertig nach ' + n + ' Zügen';
+      $('moveBig').textContent = '🎉';
+      $('moveBig').style.color = '';
+      $('moveText').innerHTML = '<b>Der Würfel ist gelöst!</b>';
+      $('nextMove').textContent = '';
+    }
+    $('bPrev').disabled = $('bFirst').disabled = idx === 0;
+    $('bNext').disabled = $('bLast').disabled = idx >= n;
+    $('bPlay').disabled = idx >= n && !playing;
+    $('bPlay').textContent = playing ? '⏸ Pause' : '▶ Abspielen';
+    buildNet($('miniNet'), sol.states[idx].split(''), { readonly: true });
+  }
+
+  function gotoStep(i) {
+    idx = i;
+    render3D(sol.states[idx]);
+    if (idx < sol.moves.length) focusFace(sol.moves[idx][0]);
+    updateUI();
+  }
+
+  function duration() { return Math.round(1300 - $('speed').value * 11.5); } // 150..1300 ms
+
+  function stepForward() {
+    if (busy || idx >= sol.moves.length) return Promise.resolve();
+    busy = true;
+    var m = sol.moves[idx];
+    focusFace(m[0]);
+    return animateMove(sol.states[idx], m, duration()).then(function () {
+      idx++; busy = false;
+      render3D(sol.states[idx]);
+      if (idx < sol.moves.length) { /* nächste Ansicht erst beim nächsten Zug */ }
+      updateUI();
+    });
+  }
+  function stepBack() {
+    if (busy || idx <= 0) return Promise.resolve();
+    busy = true;
+    var m = sol.moves[idx - 1];
+    focusFace(m[0]);
+    return animateMove(sol.states[idx], inverse(m), duration()).then(function () {
+      idx--; busy = false;
+      render3D(sol.states[idx]);
+      updateUI();
+    });
+  }
+
+  function stopPlay() { playing = false; clearTimeout(playTimer); if (sol) updateUI(); }
+  function playLoop() {
+    if (!playing) return;
+    if (idx >= sol.moves.length) { stopPlay(); return; }
+    stepForward().then(function () {
+      if (!playing) return;
+      playTimer = setTimeout(playLoop, Math.max(120, duration() * 0.35));
+    });
+  }
+
+  $('bNext').addEventListener('click', function () { stopPlay(); stepForward(); });
+  $('bPrev').addEventListener('click', function () { stopPlay(); stepBack(); });
+  $('bFirst').addEventListener('click', function () { if (!busy) { stopPlay(); gotoStep(0); } });
+  $('bLast').addEventListener('click', function () { if (!busy) { stopPlay(); gotoStep(sol.moves.length); } });
+  $('bPlay').addEventListener('click', function () {
+    if (playing) { stopPlay(); return; }
+    if (idx >= sol.moves.length) return;
+    playing = true; updateUI(); playLoop();
+  });
+  $('btnBack').addEventListener('click', function () {
+    stopPlay();
+    $('solveView').classList.add('hidden');
+    $('inputView').classList.remove('hidden');
+    $('inputMsg').innerHTML = '';
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!sol || $('solveView').classList.contains('hidden')) return;
+    if (e.key === 'ArrowRight') { stopPlay(); stepForward(); }
+    else if (e.key === 'ArrowLeft') { stopPlay(); stepBack(); }
+    else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('bPlay').click(); }
+  });
+
+  renderInput();
+  applyView();
+})();
+</script>
+</body>
+</html>

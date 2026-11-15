@@ -127,6 +127,25 @@
     .ctrl button { flex: 1 1 0; min-width: 0 !important; padding: 8px 4px; }
     .ctrl #bPlay, .ctrl #bNext { flex: 2 1 0; }
   }
+  fieldset.modes { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 14px 0 0; }
+  fieldset.modes legend { color: var(--muted); font-size: .9rem; padding: 0 6px; }
+  fieldset.modes label { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+  fieldset.modes input { margin-top: 5px; width: 18px; height: 18px; }
+  .stages { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .stg { width: 36px; height: 36px; border-radius: 50%; padding: 0; border: 2px solid var(--line); background: var(--card2);
+    font-weight: 700; font-size: .95rem; }
+  .stg.done { background: var(--ok); border-color: var(--ok); color: #04210f; }
+  .stg.cur { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .stg.empty { opacity: .55; }
+  .stagename { font-weight: 700; font-size: 1.05rem; margin-bottom: 2px; }
+  .note { text-align: left; background: #4f8cff1f; border: 1px solid #4f8cff66; border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: .95rem; }
+  details.sinfo { text-align: left; margin: 8px 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--card2); }
+  details.sinfo summary { cursor: pointer; font-weight: 600; }
+  details.sinfo p { margin: 8px 0 2px; font-size: .95rem; }
+  .chip.m0 { margin-left: 8px; }
+  .chip.sa { border-bottom: 3px solid #4f8cff; } .chip.sb { border-bottom: 3px solid #34c759; }
+  .chip.cur.sa, .chip.cur.sb { border-bottom-color: #fff; }
+  .chip.inmacro { box-shadow: 0 0 0 2px #fff6; }
   footer { color: var(--muted); font-size: .85rem; text-align: center; margin: 24px 0 8px; }
 </style>
 </head>
@@ -152,6 +171,13 @@
             ist. Das Netz zeigt die Seiten wie ein aufgeklappter Karton: oben die weiße Seite, in der Mitte links→rechts
             Links, Vorne, Rechts, Hinten und unten die gelbe Seite – jeweils so, als würdest du direkt auf diese Seite schauen
             (bei Oben liegt die Hinterkante oben, bei Unten die Vorderkante oben).</p>
+          <fieldset class="modes">
+            <legend>2. Lösungsweg</legend>
+            <label><input type="radio" name="mode" value="learn" checked>
+              <span><b>Lernmodus</b> – Anfängermethode in 7 Stufen mit Erklärungen (ca. 100–190 Züge)</span></label>
+            <label><input type="radio" name="mode" value="short">
+              <span><b>Kurze Lösung</b> – nur Züge, dafür meist unter 25</span></label>
+          </fieldset>
           <div class="row" style="margin-top:12px">
             <button class="primary" id="btnSolve">Lösung berechnen</button>
             <button id="btnScramble">Zufällig mischen</button>
@@ -179,10 +205,16 @@
         <div class="mininet"><div class="net" id="miniNet" style="--sz:20px"></div></div>
       </div>
       <div class="card instr">
+        <div id="stageBox" class="hidden">
+          <div class="stages" id="stagePills"></div>
+          <div class="stagename" id="stageName"></div>
+        </div>
         <div class="stepno" id="stepNo"></div>
         <div class="bar"><div id="barFill"></div></div>
         <div class="move-big" id="moveBig">–</div>
         <div class="move-text" id="moveText"></div>
+        <div class="note hidden" id="noteBox"></div>
+        <details class="sinfo hidden" id="stageInfo"><summary>Was passiert in dieser Stufe?</summary><p id="stageIntro"></p></details>
         <div class="next" id="nextMove"></div>
         <div class="ctrl">
           <button id="bFirst" title="Zum Anfang">⏮</button>
@@ -194,7 +226,7 @@
         <div class="speed">langsam <input type="range" id="speed" min="0" max="100" value="55"> schnell</div>
         <h2 style="margin-top:16px; text-align:left">Alle Züge</h2>
         <div class="chips" id="chips"></div>
-        <div class="legend">
+        <div class="legend" id="legend">
           <span><i style="background:var(--accent)"></i>Phase 1: Würfel „vorbereiten“</span>
           <span><i style="border:1px dashed var(--muted)"></i>Phase 2 (gestrichelt): fertig lösen</span>
         </div>
@@ -210,6 +242,7 @@
 </div>
 
 <script src="solver.js"></script>
+<script src="learn.js"></script>
 <script>
 (function () {
   'use strict';
@@ -302,7 +335,10 @@
     showMsg('info', '⏳ Berechne Lösung … (beim ersten Mal baut das Programm Suchtabellen auf, das dauert ein bis zwei Sekunden)');
     setTimeout(function () {
       var res;
-      try { res = S.solveCube(chk.cube, { timeLimit: 800 }); }
+      try {
+        var mode = document.querySelector('input[name=mode]:checked').value;
+        res = mode === 'learn' ? window.LearnSolver.solve(chk.cube) : S.solveCube(chk.cube, { timeLimit: 800 });
+      }
       catch (e) { res = { error: e.message }; }
       solving = false;
       $('btnSolve').disabled = false;
@@ -429,23 +465,75 @@
   function startSolution(start, res) {
     var states = [start];
     res.moves.forEach(function (m) { states.push(S.applyMove(states[states.length - 1], m)); });
-    sol = { states: states, moves: res.moves, phase1: res.phase1 };
+    sol = { states: states, moves: res.moves, phase1: res.phase1, meta: res.meta || null, stages: res.stages || null };
+    lastStage = -1;
+    if (sol.stages) buildPills();
     idx = 0; busy = false; stopPlay();
     $('inputView').classList.add('hidden');
     $('solveView').classList.remove('hidden');
-    $('solInfo').textContent = res.moves.length + ' Züge bis zur Lösung';
+    $('solInfo').textContent = res.moves.length + ' Züge bis zur Lösung' + (sol.stages ? ' · Lernmodus, ' + sol.stages.length + ' Stufen' : '');
+    $('stageBox').classList.toggle('hidden', !sol.stages);
+    $('legend').classList.toggle('hidden', !!sol.stages);
     // Chips
     var chips = $('chips');
     chips.innerHTML = '';
     res.moves.forEach(function (m, i) {
       var c = document.createElement('span');
-      c.className = 'chip' + (i >= res.phase1 ? ' p2' : '');
+      c.className = 'chip' + (!sol.meta && i >= res.phase1 ? ' p2' : '');
+      if (sol.meta) {
+        var mt = sol.meta[i], pm = i ? sol.meta[i - 1] : null;
+        c.className += (mt.stage % 2 ? ' sb' : ' sa') + (!pm || pm.macro !== mt.macro ? ' m0' : '');
+        c.title = 'Stufe ' + (mt.stage + 1) + ': ' + mt.stepTitle;
+      }
       c.textContent = m;
       c.addEventListener('click', function () { if (!busy) { stopPlay(); gotoStep(i); } });
       chips.appendChild(c);
     });
     view.rx = -28; view.ry = -36; applyView();
     gotoStep(0);
+  }
+
+  var lastStage = -1;
+  function buildPills() {
+    var box = $('stagePills');
+    box.innerHTML = '';
+    sol.stages.forEach(function (st, i) {
+      var b = document.createElement('button');
+      b.className = 'stg';
+      b.textContent = i + 1;
+      b.addEventListener('click', function () {
+        if (busy || !st.count) return;
+        stopPlay(); gotoStep(st.first);
+      });
+      box.appendChild(b);
+    });
+  }
+  function updateLearnUI() {
+    var n = sol.moves.length, cur = idx < n ? sol.meta[idx] : null;
+    var pills = $('stagePills').children;
+    sol.stages.forEach(function (st, i) {
+      var done = idx >= st.first + st.count && (st.count > 0 || idx >= st.first);
+      var isCur = cur && cur.stage === i;
+      pills[i].className = 'stg' + (done ? ' done' : '') + (isCur ? ' cur' : '') + (!st.count ? ' empty' : '');
+      pills[i].textContent = done ? '✓' : (i + 1);
+      pills[i].title = st.title + (st.count ? '' : ' (schon erledigt)');
+    });
+    var kids = $('chips').children;
+    for (var i = 0; i < kids.length && i < sol.meta.length; i++) kids[i].classList.toggle('inmacro', !!cur && sol.meta[i].macro === cur.macro);
+    if (cur) {
+      var st = sol.stages[cur.stage];
+      $('stageName').textContent = 'Stufe ' + (cur.stage + 1) + ' von ' + sol.stages.length + ': ' + st.title;
+      $('stepNo').textContent = cur.stepTitle + ' · Zug ' + (idx + 1) + ' von ' + n;
+      $('noteBox').classList.remove('hidden');
+      $('noteBox').textContent = cur.note + (cur.len > 1 ? ' (Baustein: Zug ' + (cur.pos + 1) + ' von ' + cur.len + ')' : '');
+      $('stageInfo').classList.remove('hidden');
+      $('stageIntro').textContent = st.intro;
+      if (cur.stage !== lastStage) { $('stageInfo').open = true; lastStage = cur.stage; }
+    } else {
+      $('stageName').textContent = 'Geschafft!';
+      $('noteBox').classList.add('hidden');
+      $('stageInfo').classList.add('hidden');
+    }
   }
 
   function updateUI() {
@@ -468,13 +556,14 @@
       $('stepNo').textContent = 'Fertig nach ' + n + ' Zügen';
       $('moveBig').textContent = '🎉';
       $('moveBig').style.color = '';
-      $('moveText').innerHTML = '<b>Der Würfel ist gelöst!</b>';
+      $('moveText').innerHTML = '<b>Der Würfel ist gelöst!</b>' + (sol.stages ? '<br><span class="hint">Alle ' + sol.stages.length + ' Stufen geschafft – gut gemacht!</span>' : '');
       $('nextMove').textContent = '';
     }
     $('bPrev').disabled = $('bFirst').disabled = idx === 0;
     $('bNext').disabled = $('bLast').disabled = idx >= n;
     $('bPlay').disabled = idx >= n && !playing;
     $('bPlay').textContent = playing ? '⏸ Pause' : '▶ Auto';
+    if (sol.stages) updateLearnUI();
     buildNet($('miniNet'), sol.states[idx].split(''), { readonly: true });
   }
 
